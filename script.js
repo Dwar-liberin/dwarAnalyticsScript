@@ -1,14 +1,3 @@
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -54,25 +43,33 @@ var EventType;
     EventType["BROWSER_INFO"] = "browser-info";
     EventType["DEVICE_INFO"] = "device-info";
     EventType["DEVICE_LOCATION"] = "device-location";
+    EventType["QUERY_PARAM"] = "query-param";
 })(EventType || (EventType = {}));
 var Analytics = /** @class */ (function () {
-    function Analytics(appName, customerId, campaignId, serverUrl) {
-        this.MAX_RETRY = 5;
+    function Analytics(_a) {
+        var appName = _a.appName, customerId = _a.customerId, campaignId = _a.campaignId, serverUrl = _a.serverUrl;
+        this.MAX_RETRY = 3;
         this.sessionStartTime = null;
         this.appName = appName;
         this.customerId = customerId;
         this.campaignId = campaignId;
         this.analyticsServerUrl = serverUrl;
     }
-    Analytics.prototype.sendDataToAnalyticsServer = function (payload_1) {
-        return __awaiter(this, arguments, void 0, function (payload, retries) {
+    Analytics.prototype.sendDataToAnalyticsServer = function (event, retries) {
+        if (retries === void 0) { retries = 0; }
+        return __awaiter(this, void 0, void 0, function () {
             var body, serverResponse, error_1;
-            if (retries === void 0) { retries = 0; }
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 6]);
-                        body = __assign({ appName: this.appName, customerId: this.customerId, campaignId: this.campaignId }, payload);
+                        body = {
+                            appName: this.appName,
+                            customerId: this.customerId,
+                            campaignId: this.campaignId,
+                            eventType: event.type,
+                            value: event.payload,
+                        };
                         return [4 /*yield*/, fetch(this.analyticsServerUrl, {
                                 method: "POST",
                                 mode: "no-cors",
@@ -93,7 +90,7 @@ var Analytics = /** @class */ (function () {
                         error_1 = _a.sent();
                         if (!(retries < this.MAX_RETRY)) return [3 /*break*/, 4];
                         console.log("Error sending data to analytics server. Retrying... Attempt ".concat(retries + 1));
-                        return [4 /*yield*/, this.sendDataToAnalyticsServer(payload, retries + 1)];
+                        return [4 /*yield*/, this.sendDataToAnalyticsServer(event, retries + 1)];
                     case 3:
                         _a.sent();
                         return [3 /*break*/, 5];
@@ -237,6 +234,22 @@ var Analytics = /** @class */ (function () {
             });
         });
     };
+    Analytics.prototype.getQueryParam = function () {
+        var urlParams = new URLSearchParams(window.location.search);
+        var params = {};
+        var searchParam = urlParams;
+        searchParam.forEach(function (value, key) {
+            params[key] = value;
+        });
+        return params;
+    };
+    Analytics.prototype.sendQueryParam = function () {
+        var query = this.getQueryParam();
+        this.sendDataToAnalyticsServer({
+            type: EventType.QUERY_PARAM,
+            payload: query,
+        });
+    };
     Analytics.prototype.sendBrowserInfo = function () {
         var browserInfo = this.getBrowserInfo();
         this.sendDataToAnalyticsServer({
@@ -287,3 +300,14 @@ var Analytics = /** @class */ (function () {
     return Analytics;
 }());
 //
+// const analytics = new Analytics({
+//   appName: "Dwar",
+//   campaignId: 23123,
+//   customerId: 34234,
+//   serverUrl: "https://google.com",
+// });
+// analytics.trackClick({
+//   eventType:"click",
+//   payload:""
+// })
+// analytics.getQueryParam();
